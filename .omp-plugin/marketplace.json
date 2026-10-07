@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "omp-multi-codex",
+  "owner": { "name": "Microck" },
+  "metadata": {
+    "description": "Independent Codex OAuth providers for OMP",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "omp-multi-codex",
+      "description": "Add separately authenticated Codex accounts as distinct OMP providers",
+      "source": "./",
+      "version": "0.1.0",
+      "license": "MIT",
+      "homepage": "https://github.com/Microck/omp-multi-codex"
+    }
+  ]
+}

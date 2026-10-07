@@ -1,0 +1,15 @@
+{
+  "name": "omp-multi-codex",
+  "version": "0.1.0",
+  "description": "Independent OpenAI Codex OAuth providers for oh-my-pi (OMP)",
+  "type": "module",
+  "license": "MIT",
+  "omp": {
+    "extensions": ["./index.js"]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Microck/omp-multi-codex.git"
+  },
+  "keywords": ["omp", "oh-my-pi", "codex", "oauth", "multi-account"]
+}
