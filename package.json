@@ -1,6 +1,6 @@
 {
   "name": "omp-multi-codex",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Independent OpenAI Codex OAuth providers for oh-my-pi (OMP)",
   "type": "module",
   "license": "MIT",

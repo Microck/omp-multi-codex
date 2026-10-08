@@ -4,14 +4,14 @@
   "owner": { "name": "Microck" },
   "metadata": {
     "description": "Independent Codex OAuth providers for OMP",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "plugins": [
     {
       "name": "omp-multi-codex",
       "description": "Add separately authenticated Codex accounts as distinct OMP providers",
       "source": "./",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
       "homepage": "https://github.com/Microck/omp-multi-codex"
     }

@@ -1,56 +1,61 @@
-# omp-multi-codex
+# OMP Multi Codex
 
-An OMP extension that adds a separate `maisa-codex` provider for a second ChatGPT Codex subscription. Its OAuth credential and refresh lifecycle are stored under `maisa-codex`; the built-in `openai-codex` provider is not modified.
+An OMP extension that adds a separately authenticated ChatGPT Codex account under a provider ID you choose. It leaves OMP's built-in `openai-codex` provider and credentials unchanged.
 
 ## Requirements
 
-- OMP v18.8.0 or newer. The extension uses OMP's runtime `registerProvider` OAuth API and the Codex Responses transport.
-- A ChatGPT account that can use Codex.
+- OMP v18.8.0 or newer.
+- A ChatGPT account with Codex access.
 
 ## Install
 
-In OMP, run:
+In OMP, add and install the marketplace plugin:
 
 ```text
 /marketplace add Microck/omp-multi-codex
 /marketplace install omp-multi-codex@omp-multi-codex
 ```
 
-Restart OMP, then authenticate the Maisa account:
+The provider ID defaults to `codex-secondary`. To choose another ID, set `OMP_MULTI_CODEX_PROVIDER_ID` in the environment before starting OMP. For example:
 
-```text
-/login maisa-codex
+```bash
+OMP_MULTI_CODEX_PROVIDER_ID=codex-work omp
 ```
 
-OMP shows a device URL and one-time code. Open the URL, sign in as the intended account, and enter the code. The login flow does not switch or overwrite the `openai-codex` account.
+Keep the same provider ID for later OMP sessions. OMP stores the OAuth credentials under that ID. Changing it creates a new credential namespace; authenticate again with the new ID. The old credential is not deleted.
 
-Select a model from the new provider with `/model`. After login, choose a model shown in Maisa Codex's discovered catalog. Before login, only the known fallback model may appear.
+Restart OMP after installation, then sign in to the ChatGPT account you want associated with that provider ID:
 
-The extension uses the same Codex Responses API and OAuth refresh endpoint as OMP's built-in Codex provider. It fetches the account's available model catalog and falls back to a known model if discovery is unavailable. OMP refreshes OAuth credentials and model catalogs through its normal mechanisms; installing new plugin releases remains a manual marketplace update.
+```text
+/login codex-secondary
+```
 
-## Security and scope
+If you chose another ID, use it in place of `codex-secondary`. OMP displays a device URL and one-time code. Sign in to the intended account in your browser and enter the code.
 
-- OAuth access and refresh tokens are stored by OMP in its credential database under the distinct provider ID `maisa-codex`.
-- The plugin does not read `~/.codex/auth.json`, `codex-auth` account storage, or the built-in `openai-codex` credential.
-- Login uses the official OpenAI device authorization and token endpoints. It requests no API key and logs no token values.
-- The public client ID is the same client ID used by OMP's built-in Codex OAuth integration. No client secret is embedded.
-- This is an independent community extension, not an official OpenAI product.
+Choose a model from the provider with `/model`. The provider fetches that account's model catalog and uses a known fallback model if discovery is unavailable.
 
-## Updating
+## Updates
 
-Provider model discovery refreshes through OMP's normal model cache. OAuth refresh is handled by OMP when the stored access token expires. Update the plugin from its marketplace when a release is published:
+OMP refreshes OAuth credentials when needed and refreshes model catalogs through its normal mechanisms. Plugin releases are updated separately through the marketplace:
 
 ```text
 /marketplace update omp-multi-codex
 /marketplace upgrade omp-multi-codex@omp-multi-codex
 ```
 
+## Security and scope
+
+- OAuth access and refresh tokens are stored by OMP under the configured provider ID.
+- The plugin does not read `~/.codex/auth.json`, `codex-auth` account storage, or the built-in `openai-codex` credential.
+- Login uses OpenAI's device authorization and token endpoints. It requests no API key and does not log token values.
+- This is an independent community extension, not an official OpenAI product.
+
 ## Development
 
-The extension is `index.js`. To load it for one command without installing it:
+The extension entry point is `index.js`. Load it for a single command without installing it:
 
 ```bash
-omp models --extension ./index.js
+OMP_MULTI_CODEX_PROVIDER_ID=codex-work omp models codex-work -e ./index.js
 ```
 
 Before publishing changes, test model discovery and the OAuth flow with a separate test account. Do not include credentials, device codes, or account tokens in issues or logs.

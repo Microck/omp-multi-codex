@@ -1,4 +1,7 @@
-const PROVIDER_ID = "maisa-codex";
+const PROVIDER_ID = process.env.OMP_MULTI_CODEX_PROVIDER_ID || "codex-secondary";
+if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(PROVIDER_ID)) {
+  throw new Error("OMP_MULTI_CODEX_PROVIDER_ID must be a simple provider ID (letters, digits, dots, underscores, or hyphens)");
+}
 const API_BASE = "https://chatgpt.com/backend-api";
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
 const DEVICE_AUTH_URL = "https://auth.openai.com/codex/device";
@@ -11,16 +14,16 @@ const MAX_POLLS = 120;
 const POLL_INTERVAL_MS = 5_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 
-const fallbackModels = ["gpt-daybreak-blue-latest"].map(id => ({
-  id,
-  name: id,
+const fallbackModels = [{
+  id: "gpt-daybreak-blue-latest",
+  name: "gpt-daybreak-blue-latest",
   api: "openai-codex-responses",
   reasoning: true,
   input: ["text", "image"],
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   contextWindow: 272_000,
   maxTokens: 128_000,
-}));
+}];
 
 function decodeJwtPayload(token) {
   try {
@@ -86,9 +89,9 @@ async function login(callbacks) {
   const pollIntervalMs = (Number.isFinite(serverInterval) && serverInterval > 0 ? serverInterval : 5) * 1000 + 3_000;
   callbacks.onAuth({
     url: DEVICE_AUTH_URL,
-    instructions: `Sign in to the Maisa account and enter this code: ${authorization.user_code}`,
+    instructions: `Sign in to the ChatGPT account you want to use for ${PROVIDER_ID} and enter this code: ${authorization.user_code}`,
   });
-  callbacks.onProgress?.("Waiting for Maisa account authorization…");
+  callbacks.onProgress?.(`Waiting for ${PROVIDER_ID} account authorization…`);
 
   for (let attempt = 0; attempt < MAX_POLLS; attempt++) {
     if (callbacks.signal?.aborted) throw new Error("Codex login cancelled");
@@ -185,17 +188,17 @@ async function fetchDynamicModels(apiKey) {
 
 export default function registerMultiCodex(pi) {
   pi.registerProvider(PROVIDER_ID, {
-    name: "Maisa Codex",
+    name: `Codex account (${PROVIDER_ID})`,
     baseUrl: API_BASE,
     // OMP v18.8.0 drops runtime OAuth-only provider models without a non-empty apiKey.
     // Remove this sentinel once OMP keeps OAuth-only extension models registered.
     // OAuth credentials win; this non-secret value only keeps model registration visible.
-    apiKey: "maisa-codex-oauth-required",
+    apiKey: `${PROVIDER_ID}-oauth-required`,
     api: "openai-codex-responses",
     models: fallbackModels,
     fetchDynamicModels,
     oauth: {
-      name: "Maisa Codex (ChatGPT subscription)",
+      name: `Codex account (${PROVIDER_ID})`,
       login,
       refreshToken,
       getApiKey: credentials => credentials.access,
