@@ -1,17 +1,17 @@
+import { createHash, randomBytes } from "node:crypto";
+import { OAuthCallbackFlow } from "@oh-my-pi/pi-ai/oauth/callback-server";
+
 const PROVIDER_ID = process.env.OMP_MULTI_CODEX_PROVIDER_ID || "codex-secondary";
 if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(PROVIDER_ID)) {
   throw new Error("OMP_MULTI_CODEX_PROVIDER_ID must be a simple provider ID (letters, digits, dots, underscores, or hyphens)");
 }
 const API_BASE = "https://chatgpt.com/backend-api";
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
-const DEVICE_AUTH_URL = "https://auth.openai.com/codex/device";
-const DEVICE_USERCODE_URL = "https://auth.openai.com/api/accounts/deviceauth/usercode";
-const DEVICE_TOKEN_URL = "https://auth.openai.com/api/accounts/deviceauth/token";
+const AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize";
+const REDIRECT_URI = "http://localhost:1455/auth/callback";
 const TOKEN_URL = "https://auth.openai.com/oauth/token";
-const DEVICE_REDIRECT_URI = "https://auth.openai.com/deviceauth/callback";
+const SCOPE = "openid profile email offline_access api.connectors.read api.connectors.invoke";
 const CLIENT_VERSION = "0.159.0";
-const MAX_POLLS = 120;
-const POLL_INTERVAL_MS = 5_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 
 const fallbackModels = [{
@@ -71,58 +71,55 @@ async function readJson(response, action) {
   return response.json();
 }
 
-async function login(callbacks) {
-  const fetcher = callbacks.fetch ?? fetch;
-  callbacks.onProgress?.("Requesting a Codex device code…");
-  const initiation = await fetcher(DEVICE_USERCODE_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ client_id: CLIENT_ID }),
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-  const authorization = await readJson(initiation, "Codex device authorization");
-  if (typeof authorization.device_auth_id !== "string" || typeof authorization.user_code !== "string") {
-    throw new Error("Codex device authorization response was incomplete");
+class CodexBrowserOAuth extends OAuthCallbackFlow {
+  constructor(callbacks) {
+    super(callbacks, {
+      preferredPort: 1455,
+      callbackPath: "/auth/callback",
+      redirectUri: REDIRECT_URI,
+      manualInputOnly: true,
+    });
+    this.fetcher = callbacks.fetch ?? fetch;
   }
 
-  const serverInterval = Number.parseInt(String(authorization.interval ?? "5"), 10);
-  const pollIntervalMs = (Number.isFinite(serverInterval) && serverInterval > 0 ? serverInterval : 5) * 1000 + 3_000;
-  callbacks.onAuth({
-    url: DEVICE_AUTH_URL,
-    instructions: `Sign in to the ChatGPT account you want to use for ${PROVIDER_ID} and enter this code: ${authorization.user_code}`,
-  });
-  callbacks.onProgress?.(`Waiting for ${PROVIDER_ID} account authorization…`);
-
-  for (let attempt = 0; attempt < MAX_POLLS; attempt++) {
-    if (callbacks.signal?.aborted) throw new Error("Codex login cancelled");
-    await new Promise(resolve => setTimeout(resolve, attempt === 0 ? Math.min(pollIntervalMs, POLL_INTERVAL_MS) : pollIntervalMs));
-    const response = await fetcher(DEVICE_TOKEN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device_auth_id: authorization.device_auth_id, user_code: authorization.user_code }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  async generateAuthUrl(state, redirectUri) {
+    const verifier = randomBytes(32).toString("base64url");
+    this.verifier = verifier;
+    const challenge = createHash("sha256").update(verifier).digest("base64url");
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: CLIENT_ID,
+      redirect_uri: redirectUri,
+      scope: SCOPE,
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+      state,
+      id_token_add_organizations: "true",
+      codex_cli_simplified_flow: "true",
+      originator: "codex_cli_rs",
     });
-    if (response.status === 403 || response.status === 404) continue;
-    const tokenExchange = await readJson(response, "Codex device authorization");
-    if (typeof tokenExchange.authorization_code !== "string" || typeof tokenExchange.code_verifier !== "string") {
-      throw new Error("Codex device authorization response was incomplete");
-    }
+    return { url: `${AUTHORIZE_URL}?${params}` };
+  }
 
-    const tokens = await fetcher(TOKEN_URL, {
+  async exchangeToken(code, _state, redirectUri) {
+    const response = await this.fetcher(TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
         client_id: CLIENT_ID,
-        code: tokenExchange.authorization_code,
-        code_verifier: tokenExchange.code_verifier,
-        redirect_uri: DEVICE_REDIRECT_URI,
+        code,
+        code_verifier: this.verifier,
+        redirect_uri: redirectUri,
       }),
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    return validateTokenResponse(await readJson(tokens, "Codex token exchange"));
+    return validateTokenResponse(await readJson(response, "Codex token exchange"));
   }
-  throw new Error("Codex device authorization expired before login completed");
+}
+
+async function login(callbacks) {
+  return new CodexBrowserOAuth(callbacks).login();
 }
 
 async function refreshToken(credentials) {

@@ -30,7 +30,7 @@ Restart OMP after installation, then sign in to the ChatGPT account you want ass
 /login codex-secondary
 ```
 
-If you chose another ID, use it in place of `codex-secondary`. OMP displays a device URL and one-time code. Sign in to the intended account in your browser and enter the code.
+If you chose another ID, use it in place of `codex-secondary`. OMP opens the normal ChatGPT OAuth sign-in page. Complete sign-in in your browser. When it redirects to `localhost`, copy the full callback URL from the address bar and paste it into OMP's authorization-code prompt. This manual callback flow also works when OMP runs on a remote host, without a tunnel.
 
 Choose a model from the provider with `/model`. The provider fetches that account's model catalog and uses a known fallback model if discovery is unavailable.
 
@@ -47,7 +47,7 @@ OMP refreshes OAuth credentials when needed and refreshes model catalogs through
 
 - OAuth access and refresh tokens are stored by OMP under the configured provider ID.
 - The plugin does not read `~/.codex/auth.json`, `codex-auth` account storage, or the built-in `openai-codex` credential.
-- Login uses OpenAI's device authorization and token endpoints. It requests no API key and does not log token values.
+- Login uses OpenAI's browser OAuth and token endpoints with PKCE. It requests no API key and does not log token values.
 - This is an independent community extension, not an official OpenAI product.
 
 ## Development
