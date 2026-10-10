@@ -102,6 +102,10 @@ class CodexBrowserOAuth extends OAuthCallbackFlow {
   }
 
   async exchangeToken(code, _state, redirectUri) {
+    const requestTimeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+    const signal = this.ctrl.signal
+      ? AbortSignal.any([this.ctrl.signal, requestTimeout])
+      : requestTimeout;
     const response = await this.fetcher(TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -112,7 +116,7 @@ class CodexBrowserOAuth extends OAuthCallbackFlow {
         code_verifier: this.verifier,
         redirect_uri: redirectUri,
       }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal,
     });
     return validateTokenResponse(await readJson(response, "Codex token exchange"));
   }

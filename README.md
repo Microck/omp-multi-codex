@@ -30,7 +30,7 @@ Restart OMP after installation, then sign in to the ChatGPT account you want ass
 /login codex-secondary
 ```
 
-If you chose another ID, use it in place of `codex-secondary`. OMP opens the normal ChatGPT OAuth sign-in page. Complete sign-in in your browser. When it redirects to `localhost`, copy the full callback URL from the address bar and paste it into OMP's authorization-code prompt. This manual callback flow also works when OMP runs on a remote host, without a tunnel.
+If you chose another ID, use it in place of `codex-secondary`. OMP opens the normal ChatGPT OAuth sign-in page. Complete sign-in in your browser. It redirects to `localhost`; no callback server runs on the browser's machine, so the page may show a connection error. Copy the full callback URL from the address bar and paste it into OMP's authorization-code prompt. This works for remote OMP without a tunnel.
 
 Choose a model from the provider with `/model`. The provider fetches that account's model catalog and uses a known fallback model if discovery is unavailable.
 
